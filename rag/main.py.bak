@@ -123,6 +123,7 @@ def run_rag_pipeline():
     print(response["answer"])
 
 if __name__ == "__main__":
+    if os.environ["OPENAI_API_KEY"] == "your-actual-api-key-here":
         print("❌ ERROR: Please replace 'your-actual-api-key-here' with your real OpenAI API key.")
     else:
         # Step 1: Run table generation and file data dump
