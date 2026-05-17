@@ -20,11 +20,11 @@ VECTOR_DB_DIR = "./chroma_it_db"
 def setup_database():
     """Reads the rag.sql schema and seeds it with Kaggle CSV data columns."""
     if not os.path.exists(CSV_FILE):
-        print(f"❌ ERROR: Cannot find '{CSV_FILE}' in this folder. Make sure it's unzipped and here!")
+        print(f" ERROR: Cannot find '{CSV_FILE}' in this folder. Make sure it's unzipped and here!")
         return False
         
     if not os.path.exists(SQL_SCRIPT):
-        print(f"❌ ERROR: Cannot find '{SQL_SCRIPT}' script in this folder!")
+        print(f" ERROR: Cannot find '{SQL_SCRIPT}' script in this folder!")
         return False
 
     print("🧹 Cleaning up old database files for a fresh build...")
