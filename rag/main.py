@@ -32,7 +32,7 @@ def setup_database():
         os.remove(DB_FILE)
 
     # 1. Initialize SQLite Database utilizing your rag.sql blueprint
-    print(f"🏛️ Reading schema from '{SQL_SCRIPT}' and initializing SQLite...")
+    print(f" Reading schema from '{SQL_SCRIPT}' and initializing SQLite...")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
@@ -48,7 +48,7 @@ def setup_database():
     # Clean out empty rows and take a 150-row slice to save API costs
     df_clean = df.dropna(subset=['Document', 'Topic_group']).head(150)
 
-    print("💾 Seeding relational database tables...")
+    print(" Seeding relational database tables...")
     tickets_data = []
     for _, row in df_clean.iterrows():
         # Mapping CSV columns: 'Topic_group' -> category, and 'Document' -> issue_description
@@ -123,8 +123,8 @@ def run_rag_pipeline():
     print(response["answer"])
 
 if __name__ == "__main__":
-        print("❌ ERROR: Please replace 'your-actual-api-key-here' with your real OpenAI API key.")
-    else:
+        print(" ERROR: Please replace 'your-actual-api-key-here' with your real OpenAI API key.")
+else:
         # Step 1: Run table generation and file data dump
         success = setup_database()
         # Step 2: Extract from SQL table, build mathematical vector matrix database, talk to AI
