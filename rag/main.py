@@ -9,16 +9,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
-# 🔑 PASTE YOUR ACTUAL OPENAI API KEY HERE
+# PASTE YOUR ACTUAL OPENAI API KEY HERE
 os.environ["OPENAI_API_KEY"] = "your-actual-api-key-here"
 
 CSV_FILE = "all_tickets_processed_improved_v3.csv"
-SQL_SCRIPT = "reg.sql"
+SQL_SCRIPT = "rag.sql"
 DB_FILE = "it_tickets.db"
 VECTOR_DB_DIR = "./chroma_it_db"
 
 def setup_database():
-    """Reads the reg.sql schema and seeds it with Kaggle CSV data columns."""
+    """Reads the rag.sql schema and seeds it with Kaggle CSV data columns."""
     if not os.path.exists(CSV_FILE):
         print(f"❌ ERROR: Cannot find '{CSV_FILE}' in this folder. Make sure it's unzipped and here!")
         return False
@@ -31,7 +31,7 @@ def setup_database():
     if os.path.exists(DB_FILE):
         os.remove(DB_FILE)
 
-    # 1. Initialize SQLite Database utilizing your reg.sql blueprint
+    # 1. Initialize SQLite Database utilizing your rag.sql blueprint
     print(f"🏛️ Reading schema from '{SQL_SCRIPT}' and initializing SQLite...")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -42,7 +42,7 @@ def setup_database():
     conn.commit()
 
     # 2. Read raw CSV columns explicitly matching your file
-    print(f"📊 Parsing raw records from '{CSV_FILE}'...")
+    print(f"Parsing raw records from '{CSV_FILE}'...")
     df = pd.read_csv(CSV_FILE)
     
     # Clean out empty rows and take a 150-row slice to save API costs
@@ -61,12 +61,12 @@ def setup_database():
     )
     conn.commit()
     conn.close()
-    print(f"✅ SQL Database '{DB_FILE}' successfully built and seeded.")
+    print(f" SQL Database '{DB_FILE}' successfully built and seeded.")
     return True
 
 def run_rag_pipeline():
     """Extracts rows from SQLite, processes them into chunks, and runs RAG query."""
-    print("\n🔌 Extracting records from SQL database for vectorization...")
+    print("\n Extracting records from SQL database for vectorization...")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT category, issue_description FROM support_tickets")
@@ -79,11 +79,11 @@ def run_rag_pipeline():
         formatted_text = f"IT Helpdesk Department: {category} | Log Content: {issue_description}"
         documents.append(Document(page_content=formatted_text))
 
-    print(f"✂️ Slicing structural logs into semantic text chunks...")
+    print(f" Slicing structural logs into semantic text chunks...")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = text_splitter.split_documents(documents)
 
-    print("🤖 Vectorizing chunks and building local Vector DB (Chroma)...")
+    print("Vectorizing chunks and building local Vector DB (Chroma)...")
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     
     # Automatically creates or overwrites the local Vector DB directory
@@ -115,11 +115,11 @@ def run_rag_pipeline():
 
     # 4. Run sample audit query
     audit_query = "What specific issues are users reporting regarding password resets, access issues, or expiration days?"
-    print(f"\n🔎 Querying RAG System: '{audit_query}'")
+    print(f"\n Querying RAG System: '{audit_query}'")
     
     response = rag_chain.invoke({"input": audit_query})
     
-    print("\n🖥️ Generated Infrastructure Audit Report:")
+    print("\n Generated Infrastructure Audit Report:")
     print(response["answer"])
 
 if __name__ == "__main__":
