@@ -42,4 +42,4 @@ This project solves that bottleneck by providing:
                        ▼
          [ Verified Audit Reports / Analytics ]
 
-![alt text](Gemini_Generated_Image_d0iq3pd0iq3pd0iq.png)
+/Users/harikrishna/Downloads/Gemini_Generated_Image_qjzkfvqjzkfvqjzk.png
