@@ -22,8 +22,10 @@ This project solves that bottleneck by providing:
 * **Vector Embeddings Storage:** `ChromaDB` (High-dimensional semantic indices)
 * **Language Model Intelligence:** OpenAI `GPT-4o-mini` API
 
+![alt text](Gemini_Generated_Image_qjzkfvqjzkfvqjzk.png)
+
 ```text
-                     [ 40K+ Raw Support Records ]
+                           [ 40K+ Records ]
                                   │
                                   ▼ (Pandas ETL Pipeline)
                           [ MySQL Database ]
@@ -42,4 +44,3 @@ This project solves that bottleneck by providing:
                        ▼
          [ Verified Audit Reports / Analytics ]
 
-![alt text](Gemini_Generated_Image_qjzkfvqjzkfvqjzk.png)
