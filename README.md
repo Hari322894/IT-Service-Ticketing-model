@@ -41,3 +41,5 @@ This project solves that bottleneck by providing:
                        │
                        ▼
          [ Verified Audit Reports / Analytics ]
+
+![alt text](Gemini_Generated_Image_d0iq3pd0iq3pd0iq.png)
