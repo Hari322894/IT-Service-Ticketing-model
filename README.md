@@ -22,7 +22,7 @@ This project solves that bottleneck by providing:
 * **Vector Embeddings Storage:** `ChromaDB` (High-dimensional semantic indices)
 * **Language Model Intelligence:** OpenAI `GPT-4o-mini` API
 
-![alt text](RAG model idea.png)
+![alt text](RagModelidea.png)
 
 ```text
                            [ 40K+ Records ]
