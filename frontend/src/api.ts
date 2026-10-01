@@ -35,3 +35,32 @@ export function fetchTickets(
   if (params.category) qs.set('category', params.category)
   return get<TicketPage>(`/api/tickets?${qs}`, signal)
 }
+
+export interface Source {
+  id: number
+  category: string
+  score: number
+}
+
+export interface AskResponse {
+  answer: string
+  sources: Source[]
+}
+
+export function fetchTicket(id: number) {
+  return get<Ticket>(`/api/tickets/${id}`)
+}
+
+export async function ask(question: string): Promise<AskResponse> {
+  const res = await fetch('/api/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = typeof body?.detail === 'string' ? body.detail : `Request failed: ${res.status}`
+    throw new Error(detail)
+  }
+  return res.json()
+}

@@ -1,149 +1,54 @@
 import { useEffect, useState } from 'react'
-import { fetchCategories, fetchTickets, type CategoryCount, type Ticket, type TicketPage } from './api'
+import { fetchCategories, fetchTicket, type CategoryCount, type Ticket } from './api'
+import Ask from './Ask'
+import Browse from './Browse'
+import TicketModal from './TicketModal'
 
-const PAGE_SIZE = 25
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms)
-    return () => clearTimeout(t)
-  }, [value, ms])
-  return debounced
-}
+type Tab = 'ask' | 'browse'
 
 export default function App() {
+  const [tab, setTab] = useState<Tab>('ask')
   const [categories, setCategories] = useState<CategoryCount[]>([])
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('')
-  const [offset, setOffset] = useState(0)
-  const [page, setPage] = useState<TicketPage | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Ticket | null>(null)
 
-  const q = useDebounced(query.trim(), 300)
-
   useEffect(() => {
-    fetchCategories().then(setCategories).catch((e) => setError(e.message))
+    fetchCategories().then(setCategories).catch(() => setCategories([]))
   }, [])
 
-  // Reset to the first page whenever the filters change.
-  useEffect(() => setOffset(0), [q, category])
-
-  useEffect(() => {
-    const ctrl = new AbortController()
-    setLoading(true)
-    fetchTickets({ q, category, limit: PAGE_SIZE, offset }, ctrl.signal)
-      .then((p) => {
-        setPage(p)
-        setError(null)
-      })
-      .catch((e) => {
-        if (e.name !== 'AbortError') setError(e.message)
-      })
-      .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false)
-      })
-    return () => ctrl.abort()
-  }, [q, category, offset])
-
-  const total = page?.total ?? 0
   const allCount = categories.reduce((n, c) => n + c.count, 0)
+
+  function openTicket(id: number) {
+    fetchTicket(id).then(setSelected).catch(() => {})
+  }
 
   return (
     <div className="layout">
       <header className="header">
-        <h1>IT Ticket Explorer</h1>
-        <p className="subtitle">Browse {allCount.toLocaleString()} enterprise IT support tickets</p>
+        <div>
+          <h1>IT Ticket Explorer</h1>
+          <p className="subtitle">
+            RAG-powered insights over {allCount ? allCount.toLocaleString() : ''} enterprise IT support tickets
+          </p>
+        </div>
+        <nav className="tabs">
+          <button className={tab === 'ask' ? 'active' : ''} onClick={() => setTab('ask')}>
+            Ask
+          </button>
+          <button className={tab === 'browse' ? 'active' : ''} onClick={() => setTab('browse')}>
+            Browse
+          </button>
+        </nav>
       </header>
 
-      <aside className="sidebar">
-        <h2>Categories</h2>
-        <ul>
-          <li>
-            <button className={category === '' ? 'active' : ''} onClick={() => setCategory('')}>
-              <span>All</span>
-              <span className="count">{allCount.toLocaleString()}</span>
-            </button>
-          </li>
-          {categories.map((c) => (
-            <li key={c.category}>
-              <button
-                className={category === c.category ? 'active' : ''}
-                onClick={() => setCategory(c.category)}
-              >
-                <span>{c.category}</span>
-                <span className="count">{c.count.toLocaleString()}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </aside>
+      {/* Both views stay mounted so switching tabs keeps chat history and filters */}
+      <div hidden={tab !== 'ask'}>
+        <Ask onOpenTicket={openTicket} />
+      </div>
+      <div hidden={tab !== 'browse'}>
+        <Browse categories={categories} onSelect={setSelected} />
+      </div>
 
-      <main className="main">
-        <input
-          className="search"
-          type="search"
-          placeholder="Search ticket text, e.g. password reset"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-
-        <div className="meta">
-          {error ? (
-            <span className="error">{error}</span>
-          ) : (
-            <span>
-              {total.toLocaleString()} result{total === 1 ? '' : 's'}
-              {loading && ' · loading…'}
-            </span>
-          )}
-        </div>
-
-        <ul className="tickets">
-          {page?.items.map((t) => (
-            <li key={t.id}>
-              <button className="ticket" onClick={() => setSelected(t)}>
-                <div className="ticket-head">
-                  <span className="id">#{t.id}</span>
-                  <span className="badge">{t.category}</span>
-                </div>
-                <p className="preview">{t.issue_description}</p>
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        {page && total > PAGE_SIZE && (
-          <nav className="pager">
-            <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
-              ← Prev
-            </button>
-            <span>
-              {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
-            </span>
-            <button disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}>
-              Next →
-            </button>
-          </nav>
-        )}
-      </main>
-
-      {selected && (
-        <div className="overlay" onClick={() => setSelected(null)}>
-          <div className="modal" role="dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="ticket-head">
-              <span className="id">Ticket #{selected.id}</span>
-              <span className="badge">{selected.category}</span>
-              <button className="close" onClick={() => setSelected(null)} aria-label="Close">
-                ×
-              </button>
-            </div>
-            <p className="full">{selected.issue_description}</p>
-          </div>
-        </div>
-      )}
+      {selected && <TicketModal ticket={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: it-ticket-explorer
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Render asks you to paste this when you create the service; it's never stored in git
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ASK_PER_MINUTE
+        value: "5"
+      - key: ASK_PER_DAY
+        value: "300"

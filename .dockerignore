@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+**/.env
+frontend/dist
+backend/*.db
+backend/chroma_db
+rag/*.db
+rag/chroma_it_db
+*.png

@@ -1,38 +1,39 @@
-"""RAG pipeline: SQLite tickets -> Chroma vectors -> relevance gate -> GPT-4o-mini."""
+"""RAG pipeline: SQLite tickets -> Chroma vectors -> relevance gate -> Claude."""
 import os
 import threading
 from pathlib import Path
 from typing import List, Optional
 
+import anthropic
+import chromadb
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 from dotenv import load_dotenv
-from langchain_chroma import Chroma
-from langchain_core.documents import Document
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from . import db
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(BACKEND_DIR / ".env")
 
+MODEL = "claude-opus-5-5"
 VECTOR_DB_DIR = BACKEND_DIR / "chroma_db"
 COLLECTION = "it_tickets"
-MAX_TICKETS = int(os.getenv("RAG_MAX_TICKETS", "2000"))
+MAX_TICKETS = int(os.getenv("RAG_MAX_TICKETS", "3000"))
 TOP_K = 5
 # Tickets scoring below this relevance (0-1) are not trusted as context.
-MIN_RELEVANCE = 0.35
+MIN_RELEVANCE = 0.3
 NO_MATCH = "No matching technical records found."
 
 SYSTEM_PROMPT = (
     "You are an expert corporate IT Systems Infrastructure Analyst.\n"
-    "Answer the user's question using ONLY the historical incident logs below. "
+    "Answer the user's question using ONLY the historical incident logs inside <tickets>. "
     "Identify overlapping technical problems, common failure modes, or patterns, "
-    "and cite tickets by their id like [#123]. "
-    f"If the logs do not answer the question, reply exactly: '{NO_MATCH}'\n\n"
-    "Historical Logs Context:\n{context}"
+    "and cite tickets by their id like [#123]. The logs are preprocessed text with stop words "
+    "removed, so read them for meaning rather than grammar. "
+    f"If the logs do not answer the question, reply exactly: '{NO_MATCH}'"
 )
 
-_store: Optional[Chroma] = None
+_collection = None
+_client: Optional[anthropic.Anthropic] = None
 _lock = threading.Lock()
 
 
@@ -40,69 +41,86 @@ class NotConfigured(RuntimeError):
     pass
 
 
-def _check_key() -> None:
-    if not os.getenv("OPENAI_API_KEY"):
-        raise NotConfigured("OPENAI_API_KEY is not set. Add it to backend/.env (see backend/.env.example).")
+def get_collection():
+    """Open the persisted vector store, embedding tickets on first use.
 
-
-def get_store() -> Chroma:
-    """Open the persisted vector store, embedding tickets on first use."""
-    global _store
+    Embeddings run locally (all-MiniLM-L6-v2 via ONNX), so no API key is needed
+    for retrieval; Anthropic does not offer an embeddings endpoint.
+    """
+    global _collection
     with _lock:
-        if _store is not None:
-            return _store
-        _check_key()
-        store = Chroma(
-            collection_name=COLLECTION,
-            embedding_function=OpenAIEmbeddings(model="text-embedding-3-small"),
-            persist_directory=str(VECTOR_DB_DIR),
-            collection_metadata={"hnsw:space": "cosine"},
+        if _collection is not None:
+            return _collection
+        client = chromadb.PersistentClient(path=str(VECTOR_DB_DIR))
+        col = client.get_or_create_collection(
+            COLLECTION,
+            embedding_function=DefaultEmbeddingFunction(),
+            metadata={"hnsw:space": "cosine"},
         )
-        if not store.get(limit=1)["ids"]:
+        if col.count() == 0:
             db.init_db()
             _, rows = db.search_tickets(None, None, MAX_TICKETS, 0)
             print(f"Embedding {len(rows)} tickets into {VECTOR_DB_DIR.name}/ (one-time)...")
-            docs = [
-                Document(
-                    # Truncate very long tickets so each one fits in a single embedding
-                    page_content=f"Department: {r['category']} | Log: {r['issue_description'][:2000]}",
-                    metadata={"ticket_id": r["id"], "category": r["category"]},
+            for i in range(0, len(rows), 500):
+                batch = rows[i : i + 500]
+                col.add(
+                    ids=[str(r["id"]) for r in batch],
+                    documents=[f"Department: {r['category']} | Log: {r['issue_description']}" for r in batch],
+                    metadatas=[{"ticket_id": r["id"], "category": r["category"]} for r in batch],
                 )
-                for r in rows
-            ]
-            ids = [str(r["id"]) for r in rows]
-            for i in range(0, len(docs), 500):
-                store.add_documents(docs[i : i + 500], ids=ids[i : i + 500])
             print("Vector store ready.")
-        _store = store
-        return _store
+        _collection = col
+        return _collection
+
+
+def _claude() -> anthropic.Anthropic:
+    global _client
+    if _client is None:
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            raise NotConfigured("ANTHROPIC_API_KEY is not set. Add it to backend/.env (see backend/.env.example).")
+        _client = anthropic.Anthropic()
+    return _client
 
 
 def ask(question: str) -> dict:
-    store = get_store()
-    hits = store.similarity_search_with_relevance_scores(question, k=TOP_K)
+    # Over-fetch because the HNSW index can return the same ticket more than once
+    res = get_collection().query(query_texts=[question], n_results=TOP_K * 2)
 
     # Validation gate: only well-matched tickets reach the LLM
-    relevant = [(doc, score) for doc, score in hits if score >= MIN_RELEVANCE]
+    relevant, seen = [], set()
+    for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0], res["distances"][0]):
+        score = 1 - dist  # cosine distance -> similarity
+        if score >= MIN_RELEVANCE and meta["ticket_id"] not in seen:
+            seen.add(meta["ticket_id"])
+            relevant.append((doc, meta, score))
+    relevant = relevant[:TOP_K]
     if not relevant:
         return {"answer": NO_MATCH, "sources": []}
 
-    context = "\n\n".join(f"[#{d.metadata['ticket_id']}] {d.page_content}" for d, _ in relevant)
-    prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT), ("human", "{input}")])
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    answer = (prompt | llm).invoke({"context": context, "input": question}).content
+    context = "\n\n".join(f"[#{meta['ticket_id']}] {doc}" for doc, meta, _ in relevant)
+    response = _claude().beta.messages.create(
+        model=MODEL,
+        max_tokens=16000,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": f"<tickets>\n{context}\n</tickets>\n\nQuestion: {question}"}],
+        # If Claude declines, the API retries on Anthropic's recommended fallback model
+        betas=["server-side-fallback-2026-07-01"],
+        extra_body={"fallbacks": "default", "output_config": {"effort": "medium"}},
+    )
+
+    if response.stop_reason == "refusal":
+        answer = "Claude declined to answer this question."
+    else:
+        answer = "".join(b.text for b in response.content if b.type == "text").strip() or NO_MATCH
 
     sources: List[dict] = [
-        {
-            "id": d.metadata["ticket_id"],
-            "category": d.metadata["category"],
-            "score": round(score, 3),
-        }
-        for d, score in relevant
+        {"id": meta["ticket_id"], "category": meta["category"], "score": round(score, 3)}
+        for _, meta, score in relevant
     ]
     return {"answer": answer, "sources": sources}
 
 
 if __name__ == "__main__":
-    # Build the vector store ahead of time: python -m app.rag
-    get_store()
+    # Build the SQLite DB and vector store ahead of time: python -m app.rag
+    db.init_db()
+    get_collection()
