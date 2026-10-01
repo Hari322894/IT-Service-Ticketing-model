@@ -3,9 +3,9 @@ from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from . import db
+from . import db, rag
 
 
 class Ticket(BaseModel):
@@ -26,6 +26,21 @@ class CategoryCount(BaseModel):
     count: int
 
 
+class AskRequest(BaseModel):
+    question: str = Field(min_length=3, max_length=500)
+
+
+class Source(BaseModel):
+    id: int
+    category: str
+    score: float
+
+
+class AskResponse(BaseModel):
+    answer: str
+    sources: List[Source]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
@@ -36,7 +51,7 @@ app = FastAPI(title="IT Ticket Explorer API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -68,3 +83,11 @@ def ticket(ticket_id: int):
     if not found:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return found
+
+
+@app.post("/api/ask", response_model=AskResponse)
+def ask(body: AskRequest):
+    try:
+        return rag.ask(body.question)
+    except rag.NotConfigured as e:
+        raise HTTPException(status_code=503, detail=str(e))

@@ -57,6 +57,7 @@ A full-stack site for browsing the ticket dataset.
 ### Run locally
 
 ```bash
+To run the webstie first I did this, I will implement a backend api later
 # Terminal 1: API on http://localhost:8000 (docs at /docs)
 cd backend
 python3 -m venv .venv && source .venv/bin/activate

@@ -7,6 +7,7 @@ __pycache__/
 # Generated data
 *.db
 chroma_it_db/
+chroma_db/
 rag/*.csv
 
 # Node
