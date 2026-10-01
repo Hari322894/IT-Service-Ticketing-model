@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Generated data
+*.db
+chroma_it_db/
+rag/*.csv
+
+# Node
+node_modules/
+dist/
+
+.DS_Store

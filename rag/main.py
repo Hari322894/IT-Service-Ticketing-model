@@ -1,6 +1,8 @@
 import os
 import sqlite3
+import zipfile
 import pandas as pd
+from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -9,18 +11,22 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
-# PASTE YOUR ACTUAL OPENAI API KEY HERE
-os.environ["OPENAI_API_KEY"] = "your-actual-api-key-here"
+# Paths are relative to this file, so the script works from any directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CSV_FILE = "all_tickets_processed_improved_v3.csv"
-SQL_SCRIPT = "rag.sql"
-DB_FILE = "it_tickets.db"
-VECTOR_DB_DIR = "./chroma_it_db"
+# Loads OPENAI_API_KEY from rag/.env (never hardcode the key in this file)
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+CSV_FILE = os.path.join(BASE_DIR, "all_tickets_processed_improved_v3.csv")
+ZIP_FILE = CSV_FILE + ".zip"
+SQL_SCRIPT = os.path.join(BASE_DIR, "rag.sql")
+DB_FILE = os.path.join(BASE_DIR, "it_tickets.db")
+VECTOR_DB_DIR = os.path.join(BASE_DIR, "chroma_it_db")
 
 def setup_database():
     """Reads the rag.sql schema and seeds it with Kaggle CSV data columns."""
-    if not os.path.exists(CSV_FILE):
-        print(f" ERROR: Cannot find '{CSV_FILE}' in this folder. Make sure it's unzipped and here!")
+    if not os.path.exists(CSV_FILE) and not os.path.exists(ZIP_FILE):
+        print(f" ERROR: Cannot find '{CSV_FILE}' or its .zip in this folder!")
         return False
         
     if not os.path.exists(SQL_SCRIPT):
@@ -42,8 +48,14 @@ def setup_database():
     conn.commit()
 
     # 2. Read raw CSV columns explicitly matching your file
-    print(f"Parsing raw records from '{CSV_FILE}'...")
-    df = pd.read_csv(CSV_FILE)
+    if os.path.exists(CSV_FILE):
+        print(f"Parsing raw records from '{CSV_FILE}'...")
+        df = pd.read_csv(CSV_FILE)
+    else:
+        # Read straight from the zip (it also contains a __MACOSX entry, so open the CSV by name)
+        print(f"Parsing raw records from '{ZIP_FILE}'...")
+        with zipfile.ZipFile(ZIP_FILE) as zf, zf.open(os.path.basename(CSV_FILE)) as f:
+            df = pd.read_csv(f)
     
     # Clean out empty rows and take a 150-row slice to save API costs
     df_clean = df.dropna(subset=['Document', 'Topic_group']).head(150)
@@ -123,8 +135,9 @@ def run_rag_pipeline():
     print(response["answer"])
 
 if __name__ == "__main__":
-        print(" ERROR: Please replace 'your-actual-api-key-here' with your real OpenAI API key.")
-else:
+    if not os.getenv("OPENAI_API_KEY"):
+        print(" ERROR: OPENAI_API_KEY is not set. Add it to rag/.env (see rag/.env.example).")
+    else:
         # Step 1: Run table generation and file data dump
         success = setup_database()
         # Step 2: Extract from SQL table, build mathematical vector matrix database, talk to AI

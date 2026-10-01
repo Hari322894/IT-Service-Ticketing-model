@@ -44,3 +44,35 @@ This project solves that bottleneck by providing:
                        ▼
          [ Verified Audit Reports / Analytics ]
 
+
+---
+
+## 🌐 Web App: IT Ticket Explorer
+
+A full-stack site for browsing the ticket dataset.
+
+* **Backend:** `FastAPI` + `SQLite` (`backend/`). On first start it builds `backend/it_tickets.db` from the zipped CSV using `rag/rag.sql`.
+* **Frontend:** `React` + `TypeScript` + `Vite` (`frontend/`). It provides category filters, full-text search, pagination and a ticket detail view.
+
+### Run locally
+
+```bash
+# Terminal 1: API on http://localhost:8000 (docs at /docs)
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2: website on http://localhost:5173
+cd frontend
+npm install
+npm run dev
+```
+
+### API
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /api/categories` | Ticket counts per category |
+| `GET /api/tickets?q=&category=&limit=&offset=` | Search and filter tickets (paginated) |
+| `GET /api/tickets/{id}` | A single ticket |
