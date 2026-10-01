@@ -78,7 +78,10 @@ def _claude() -> anthropic.Anthropic:
     if _client is None:
         if not os.getenv("ANTHROPIC_API_KEY"):
             raise NotConfigured("ANTHROPIC_API_KEY is not set. Add it to backend/.env (see backend/.env.example).")
-        _client = anthropic.Anthropic()
+        # User-level keys (sk-ant-usr-...) must name a workspace on every request
+        workspace = os.getenv("ANTHROPIC_WORKSPACE_ID")
+        headers = {"anthropic-workspace-id": workspace} if workspace else None
+        _client = anthropic.Anthropic(default_headers=headers)
     return _client
 
 

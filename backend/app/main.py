@@ -1,3 +1,4 @@
+import logging
 import os
 import threading
 import time
@@ -14,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import db, rag
+
+log = logging.getLogger("uvicorn.error")
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
@@ -151,7 +154,9 @@ def ask(body: AskRequest, request: Request):
         raise HTTPException(503, "The server's Anthropic API key is invalid.")
     except anthropic.RateLimitError:
         raise HTTPException(429, "The AI service is busy. Try again in a moment.")
-    except (anthropic.APIStatusError, anthropic.APIConnectionError):
+    except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
+        # Log the real reason server-side; visitors get a generic message
+        log.error("Anthropic API error: %s", e)
         raise HTTPException(502, "The AI service is unavailable right now. Try again later.")
 
 
