@@ -41,18 +41,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   margin-bottom: 24px;
 }
 
-.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
-.tabs a { padding: 6px 16px; border-radius: 6px; color: var(--muted); text-decoration: none; font-family: var(--mono); }
-.tabs a:hover { color: var(--text); }
-.tabs a.active { background: var(--accent); color: var(--bg); }
-
 .logo { color: inherit; text-decoration: none; }
 .logo h1 { font-family: var(--mono); letter-spacing: -0.02em; }
 .logo h1::before { content: '> '; color: var(--accent); }
 
 /* Homepage */
 .home { max-width: 760px; margin: 48px auto; }
-.eyebrow { font-family: var(--mono); color: var(--accent); margin: 0 0 12px; }
 .home-title { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; margin: 0 0 16px; }
 .home-text { color: var(--muted); font-size: 1.1rem; line-height: 1.6; margin: 0 0 32px; }
 .home-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }

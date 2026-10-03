@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
 
-export default function HomePage({ ticketCount }: { ticketCount: number }) {
+export default function HomePage() {
   return (
     <div className="home">
-      <p className="eyebrow">$ rag --tickets {ticketCount ? ticketCount.toLocaleString() : '…'}</p>
       <h2 className="home-title">Ask years of IT tickets a question.</h2>
       <p className="home-text">
         Search real support tickets by meaning, and get answers from Claude that cite the exact tickets they

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { fetchCategories, fetchTicket, type CategoryCount, type Ticket } from './api'
 import AskPage from './AskPage'
 import BrowsePage from './BrowsePage'
@@ -32,13 +32,9 @@ export default function App() {
             RAG-powered insights over {allCount ? allCount.toLocaleString() : ''} enterprise IT support tickets
           </p>
         </Link>
-        <nav className="tabs">
-          <NavLink to="/ask">Ask</NavLink>
-          <NavLink to="/browse">Browse</NavLink>
-        </nav>
       </header>
 
-      {tab === 'home' && <HomePage ticketCount={allCount} />}
+      {tab === 'home' && <HomePage />}
       {/* Ask and Browse stay mounted so switching pages keeps chat history and filters */}
       <div hidden={tab !== 'ask'}>
         <AskPage onOpenTicket={openTicket} />
