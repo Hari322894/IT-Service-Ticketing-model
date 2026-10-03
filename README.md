@@ -42,7 +42,8 @@ flowchart LR
 │   ├── ingest.py      One-time load: CSV → Supabase
 │   └── config.py      Settings
 ├── frontend/src/
-│   ├── App.tsx         Page layout with Ask / Browse tabs
+│   ├── App.tsx         Page layout, header and navigation
+│   ├── HomePage.tsx    Landing page with links to Ask and Browse
 │   ├── AskPage.tsx     Chat: question → answer + sources
 │   ├── BrowsePage.tsx  Search and filter tickets
 │   ├── TicketModal.tsx Full-ticket popup
@@ -73,8 +74,6 @@ python -m app.ingest
 cd ../frontend && npm install && npm run build
 cd ../backend && uvicorn app.api:app --port 8000
 ```
-
-Open http://localhost:8000. -> opens the app
 
 ## What happens when you ask a question
 

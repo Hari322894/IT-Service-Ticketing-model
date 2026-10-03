@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { fetchCategories, fetchTicket, type CategoryCount, type Ticket } from './api'
 import AskPage from './AskPage'
 import BrowsePage from './BrowsePage'
+import HomePage from './HomePage'
 import TicketModal from './TicketModal'
 
-type Tab = 'ask' | 'browse'
-
 export default function App() {
-  const [tab, setTab] = useState<Tab>('ask')
+  // The URL decides which page shows: /ask, /browse, or the homepage for anything else
+  const { pathname } = useLocation()
+  const tab = pathname === '/ask' ? 'ask' : pathname === '/browse' ? 'browse' : 'home'
   const [categories, setCategories] = useState<CategoryCount[]>([])
   const [selected, setSelected] = useState<Ticket | null>(null)
 
@@ -24,23 +26,20 @@ export default function App() {
   return (
     <div className="layout">
       <header className="header">
-        <div>
+        <Link to="/" className="logo">
           <h1>IT Ticket Explorer</h1>
           <p className="subtitle">
             RAG-powered insights over {allCount ? allCount.toLocaleString() : ''} enterprise IT support tickets
           </p>
-        </div>
+        </Link>
         <nav className="tabs">
-          <button className={tab === 'ask' ? 'active' : ''} onClick={() => setTab('ask')}>
-            Ask
-          </button>
-          <button className={tab === 'browse' ? 'active' : ''} onClick={() => setTab('browse')}>
-            Browse
-          </button>
+          <NavLink to="/ask">Ask</NavLink>
+          <NavLink to="/browse">Browse</NavLink>
         </nav>
       </header>
 
-      {/* Both views stay mounted so switching tabs keeps chat history and filters */}
+      {tab === 'home' && <HomePage ticketCount={allCount} />}
+      {/* Ask and Browse stay mounted so switching pages keeps chat history and filters */}
       <div hidden={tab !== 'ask'}>
         <AskPage onOpenTicket={openTicket} />
       </div>

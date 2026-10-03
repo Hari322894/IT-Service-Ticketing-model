@@ -1,32 +1,29 @@
 :root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --border: #e3e6ea;
-  --text: #1c2128;
-  --muted: #667085;
-  --accent: #2f6fde;
-  --accent-soft: #e8f0fd;
+  /* Dark, terminal-inspired theme */
+  --bg: #0a0e14;
+  --surface: #11161e;
+  --border: #1f2833;
+  --text: #d7dee8;
+  --muted: #7d8a9a;
+  --accent: #22d3ee;
+  --accent-soft: rgba(34, 211, 238, 0.12);
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1216;
-    --surface: #171b21;
-    --border: #2a3038;
-    --text: #e6e9ee;
-    --muted: #8b95a5;
-    --accent: #6ea0ff;
-    --accent-soft: #1d2a40;
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  /* faint grid in the background for a techy feel */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
 button { font: inherit; color: inherit; cursor: pointer; }
 
 .layout {
@@ -45,8 +42,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 .tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
-.tabs button { padding: 6px 16px; border: 0; border-radius: 6px; background: transparent; }
-.tabs button.active { background: var(--accent); color: #fff; }
+.tabs a { padding: 6px 16px; border-radius: 6px; color: var(--muted); text-decoration: none; font-family: var(--mono); }
+.tabs a:hover { color: var(--text); }
+.tabs a.active { background: var(--accent); color: var(--bg); }
+
+.logo { color: inherit; text-decoration: none; }
+.logo h1 { font-family: var(--mono); letter-spacing: -0.02em; }
+.logo h1::before { content: '> '; color: var(--accent); }
+
+/* Homepage */
+.home { max-width: 760px; margin: 48px auto; }
+.eyebrow { font-family: var(--mono); color: var(--accent); margin: 0 0 12px; }
+.home-title { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; margin: 0 0 16px; }
+.home-text { color: var(--muted); font-size: 1.1rem; line-height: 1.6; margin: 0 0 32px; }
+.home-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.home-card:hover { border-color: var(--accent); box-shadow: 0 0 24px var(--accent-soft); transform: translateY(-2px); }
+.home-card-title { font-family: var(--mono); font-size: 1.25rem; color: var(--text); }
 
 .browse {
   display: grid;
@@ -99,11 +122,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.ticket:hover { border-color: var(--accent); }
+.ticket:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--accent-soft); }
 
 .ticket-head { display: flex; align-items: center; gap: 8px; }
-.id { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.id { font-family: var(--mono); color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .badge {
+  font-family: var(--mono);
   font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: 999px;
@@ -167,7 +191,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 10px 14px;
   border-radius: 12px;
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);
 }
 .answer {
   margin-top: 8px;
@@ -180,6 +204,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .muted { color: var(--muted); }
 .sources { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.85rem; }
 .source {
+  font-family: var(--mono);
   padding: 2px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -200,7 +225,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);
 }
 .primary:disabled { opacity: 0.5; cursor: default; }
 
