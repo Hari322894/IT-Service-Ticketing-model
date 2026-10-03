@@ -1,5 +1,7 @@
 # Enterprise IT Service RAG Model
 
+## Website_url: https://rag-model-harikrishna-maddineni.onrender.com
+
 Ask questions about **47,837 real IT support tickets** in plain English. The app finds the most relevant tickets, ignores weak matches, and has Claude write an answer that cites the exact tickets it used.
 
 > "Which storage problems come up repeatedly?" → an answer with links to tickets #17424, #14233, …
@@ -100,4 +102,4 @@ Open http://localhost:8000. -> opens the app
 - Keyword search uses `ILIKE`, which doesn't rank results; Postgres full-text search would.
 - No automated tests yet.
 
-website_url: https://rag-model-harikrishna-maddineni.onrender.com
+
