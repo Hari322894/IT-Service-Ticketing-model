@@ -99,3 +99,5 @@ Open http://localhost:8000. -> opens the app
 - The threshold and top-5 were tuned by hand. A small labeled test set would tune them properly.
 - Keyword search uses `ILIKE`, which doesn't rank results; Postgres full-text search would.
 - No automated tests yet.
+
+website_url: https://rag-model-harikrishna-maddineni.onrender.com
