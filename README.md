@@ -1,93 +1,101 @@
- # Enterprise IT Service RAG Model
+# Enterprise IT Service RAG Model
 
-An enterprise-grade **Retrieval-Augmented Generation (RAG)** pipeline designed to ingest, process, and audit massive technical incident data streams. The system automates corporate infrastructure audits by converting **40,000+ raw, unstructured tech-support records** into structured relational tables and semantic vectors, using strict context validation gates to eliminate Large Language Model (LLM) hallucinations.
+Ask questions about **47,837 real IT support tickets** in plain English. The app finds the most relevant tickets, ignores weak matches, and has Claude write an answer that cites the exact tickets it used.
 
----
+> "Which storage problems come up repeatedly?" → an answer with links to tickets #17424, #14233, …
 
-## Business Problem & Core Objectives
-Enterprise IT departments struggle to surface actionable insights from years of messy, high-volume ticketing logs. Manual technical audits are time-consuming, prone to oversight, and cost thousands of engineering hours. 
+## How it works
 
-This project solves that bottleneck by providing:
-1. **Automated Structured Ingestion:** Normalizing 40K+ messy technical support records into structured SQL entities.
-2. **Context-Aware Analytics:** Using cutting-edge LLMs to instantly identify structural infrastructure vulnerabilities and recurring system incident trends.
-3. **Rigorous Context Governance:** Enforcing definitive input/output validation boundaries to guarantee that automated audit decisions are derived *only* from verified organizational data.
+```mermaid
+flowchart LR
+    Q[Question] --> R[1. Retrieve<br/>5 most similar tickets]
+    DB[(Supabase<br/>tickets + embeddings)] --> R
+    R --> V{2. Validate<br/>similar enough?}
+    V -->|no| N[No matching records]
+    V -->|yes| G[3. Generate<br/>Claude answers with citations]
+```
 
----
+**Retrieve → Validate → Generate.** If no ticket is similar enough, Claude is never called, so it can't make an answer up.
 
-## 🛠️ Tech Stack & System Architecture
+## Tech stack
 
-* **Backend Orchestration:** `Python`, `LangChain`
-* **Data Manipulation & Ingestion:** `Pandas`
-* **Relational Storage:** `MySQL` (Structured operational data & incident fields)
-* **Vector Embeddings Storage:** `ChromaDB` (High-dimensional semantic indices)
-* **Language Model Intelligence:** OpenAI `GPT-4o-mini` API
+| Part | Technology |
+| --- | --- |
+| Frontend | React, TypeScript, Vite |
+| Backend | Python, FastAPI |
+| Database | Supabase (Postgres) with pgvector for similarity search |
+| Embeddings | all-MiniLM-L6-v2, run locally (free) |
+| LLM | Claude (Anthropic API) |
 
-![alt text](RagModelidea.png)
+## Project structure
 
 ```text
-                           [ 40K+ Records ]
-                                  │
-                                  ▼ (Pandas ETL Pipeline)
-                          [ MySQL Database ]
-                         ╱                ╲
- (Relational Extraction)╱                  ╲ (Semantic Text Chunking)
-                       ▼                    ▼
-               [ LangChain ] ──────► [ ChromaDB Vector Store ]
-                       │                    │
-                       ├────────────────────┤
-                       ▼                    ▼
-            [ Input Validation Gate / Context Bounds ]
-                       │
-                       ▼
-               [ OpenAI GPT-4o-mini ]
-                       │
-                       ▼
-         [ Verified Audit Reports / Analytics ]
+├── data/
+│   ├── it_support_tickets.csv.zip   The ticket dataset
+│   └── schema.sql                   The database table
+├── backend/app/
+│   ├── api.py         Web server and endpoints
+│   ├── rag.py         Retrieve → Validate → Generate
+│   ├── database.py    All Supabase queries
+│   ├── ingest.py      One-time load: CSV → Supabase
+│   └── config.py      Settings
+├── frontend/src/
+│   ├── App.tsx         Page layout with Ask / Browse tabs
+│   ├── AskPage.tsx     Chat: question → answer + sources
+│   ├── BrowsePage.tsx  Search and filter tickets
+│   ├── TicketModal.tsx Full-ticket popup
+│   └── api.ts          Calls to the backend
+└── README.md
+```
 
+## Setup
 
----
-
-## 🌐 Web App: IT Ticket Explorer
-
-A full-stack site with two tabs:
-
-* **Ask:** ask questions about the ticket history. The RAG pipeline retrieves the most similar tickets from ChromaDB and drops any that score below a relevance threshold (the validation gate). Claude (`claude-opus-5-5`) answers using only the tickets that pass, and the site shows those tickets as clickable sources.
-* **Browse:** search and filter all tickets by category.
-
-* **Backend:** `FastAPI` + `SQLite` + `ChromaDB` + Anthropic `Claude` (`backend/`). Embeddings are computed locally with Chroma's built-in `all-MiniLM-L6-v2` model, so retrieval needs no API key. Only answer generation calls Claude.
-* **Frontend:** `React` + `TypeScript` + `Vite` (`frontend/`). In production the backend serves the built frontend, so the whole site is a single service.
-* **Cost guard:** `/api/ask` is rate-limited per visitor (`ASK_PER_MINUTE`, default 5) and globally per day (`ASK_PER_DAY`, default 300).
-
-### Deploy to Render
-
-1. Push the repo to GitHub.
-2. In Render, choose **New → Blueprint** and select the repo. Render reads `render.yaml` and builds the `Dockerfile`.
-3. When prompted, paste your `ANTHROPIC_API_KEY`.
-4. The site goes live at `https://it-ticket-explorer.onrender.com` (or a similar URL). Every push to `main` redeploys it.
-
-The Docker build embeds the first `RAG_MAX_TICKETS` (default 3000) tickets into the image, so the server starts ready.
-
-### Run locally
+**1. Configure.** Create a free [Supabase](https://supabase.com) project, then:
 
 ```bash
-To run the webstie first I did this, I will implement a backend api later
-# Terminal 1: API on http://localhost:8000 (docs at /docs)
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-
-# Terminal 2: website on http://localhost:5173
-cd frontend
-npm install
-npm run dev
+cp .env.example .env   
 ```
 
-### API
+**2. Load the data** (once, about 15 minutes):
 
-| Endpoint | Description |
-| --- | --- |
-| `GET /api/categories` | Ticket counts per category |
-| `GET /api/tickets?q=&category=&limit=&offset=` | Search and filter tickets (paginated) |
-| `GET /api/tickets/{id}` | A single ticket |
-| `POST /api/ask` `{"question": "..."}` | RAG answer plus source tickets |
+```bash
+python -m app.ingest
+```
+
+**3. Build the website and run:**
+
+```bash
+cd ../frontend && npm install && npm run build
+cd ../backend && uvicorn app.api:app --port 8000
+```
+
+Open http://localhost:8000. -> opens the app
+
+## What happens when you ask a question
+
+1. `AskPage.tsx` sends the question to `POST /api/ask`. `api.py` checks it's 3–500 characters.
+2. **Retrieve** (`rag.py`): the question becomes an embedding (384 numbers that capture its meaning), and Supabase returns the 5 closest tickets:
+   ```sql
+   SELECT ..., 1 - (embedding <=> question) AS score
+   FROM support_tickets ORDER BY embedding <=> question LIMIT 5
+   ```
+3. **Validate**: tickets scoring below 0.3 similarity are dropped. If none are left, the app answers "No matching technical records found" without calling Claude.
+4. **Generate**: Claude gets the remaining tickets with instructions to use only them and cite their IDs. The website shows the answer, and each cited ticket can be opened.
+
+## Design decisions
+
+- **One database (Supabase + pgvector).** Ticket data and embeddings live in the same table. Browse uses normal SQL (filter, count, paginate) and Ask uses vector search, with no second database to keep in sync. An earlier version used SQLite plus ChromaDB.
+- **Local embeddings.** Free, private and no API key needed. The same model embeds both tickets and questions, so their numbers are comparable.
+- **Relevance threshold (0.3).** Even an off-topic question has *some* nearest tickets; the threshold stops those from reaching Claude. In testing, real questions scored 0.45–0.7.
+- **Cited sources.** Every claim links to a ticket you can check.
+- **One server.** FastAPI serves both the API and the built website.
+
+## Limitations and next steps
+
+- Broad questions ("what's most common?") only see 5 tickets; counting-style questions would need SQL aggregation instead.
+- The threshold and top-5 were tuned by hand. A small labeled test set would tune them properly.
+- Keyword search uses `ILIKE`, which doesn't rank results; Postgres full-text search would.
+- No automated tests yet.

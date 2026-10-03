@@ -14,7 +14,7 @@ const EXAMPLES = [
   'Which storage problems come up repeatedly?',
 ]
 
-export default function Ask({ onOpenTicket }: { onOpenTicket: (id: number) => void }) {
+export default function AskPage({ onOpenTicket }: { onOpenTicket: (id: number) => void }) {
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)

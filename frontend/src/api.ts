@@ -6,8 +6,6 @@ export interface Ticket {
 
 export interface TicketPage {
   total: number
-  limit: number
-  offset: number
   items: Ticket[]
 }
 

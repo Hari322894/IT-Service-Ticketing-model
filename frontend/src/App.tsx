@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchCategories, fetchTicket, type CategoryCount, type Ticket } from './api'
-import Ask from './Ask'
-import Browse from './Browse'
+import AskPage from './AskPage'
+import BrowsePage from './BrowsePage'
 import TicketModal from './TicketModal'
 
 type Tab = 'ask' | 'browse'
@@ -42,10 +42,10 @@ export default function App() {
 
       {/* Both views stay mounted so switching tabs keeps chat history and filters */}
       <div hidden={tab !== 'ask'}>
-        <Ask onOpenTicket={openTicket} />
+        <AskPage onOpenTicket={openTicket} />
       </div>
       <div hidden={tab !== 'browse'}>
-        <Browse categories={categories} onSelect={setSelected} />
+        <BrowsePage categories={categories} onSelect={setSelected} />
       </div>
 
       {selected && <TicketModal ticket={selected} onClose={() => setSelected(null)} />}

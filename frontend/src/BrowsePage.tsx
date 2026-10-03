@@ -12,7 +12,7 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced
 }
 
-export default function Browse({
+export default function BrowsePage({
   categories,
   onSelect,
 }: {

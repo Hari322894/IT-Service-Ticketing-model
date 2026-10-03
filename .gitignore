@@ -1,17 +1,17 @@
+# Secrets
+.env
+
 # Python
 __pycache__/
 *.pyc
 .venv/
-.env
 
-# Generated data
-*.db
-chroma_it_db/
-chroma_db/
-rag/*.csv
-
-# Node
+# Node / frontend build
 node_modules/
 dist/
 
+# Editors and OS
+.vscode/
+.idea/
 .DS_Store
+*.log

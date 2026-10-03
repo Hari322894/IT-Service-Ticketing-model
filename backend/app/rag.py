@@ -1,26 +1,15 @@
-"""RAG pipeline: SQLite tickets -> Chroma vectors -> relevance gate -> Claude."""
-import os
-import threading
-from pathlib import Path
-from typing import List, Optional
+"""The RAG pipeline: Retrieve -> Validate -> Generate.
 
+1. Retrieve: turn the question into an embedding and find the most similar tickets.
+2. Validate: drop weak matches. If nothing is left, say so without calling Claude,
+   so it can't make an answer up.
+3. Generate: Claude answers using only the tickets that passed, citing their ids.
+"""
 import anthropic
-import chromadb
-from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
-from dotenv import load_dotenv
+from fastembed import TextEmbedding
 
-from . import db
+from . import config, database
 
-BACKEND_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(BACKEND_DIR / ".env")
-
-MODEL = "claude-opus-5-5"
-VECTOR_DB_DIR = BACKEND_DIR / "chroma_db"
-COLLECTION = "it_tickets"
-MAX_TICKETS = int(os.getenv("RAG_MAX_TICKETS", "3000"))
-TOP_K = 5
-# Tickets scoring below this relevance (0-1) are not trusted as context.
-MIN_RELEVANCE = 0.3
 NO_MATCH = "No matching technical records found."
 
 SYSTEM_PROMPT = (
@@ -29,84 +18,50 @@ SYSTEM_PROMPT = (
     "Identify overlapping technical problems, common failure modes, or patterns, "
     "and cite tickets by their id like [#123]. The logs are preprocessed text with stop words "
     "removed, so read them for meaning rather than grammar. "
+    "Write plain text for a chat window: short paragraphs or simple '-' bullet points, "
+    "with no Markdown headings, bold, or tables. "
     f"If the logs do not answer the question, reply exactly: '{NO_MATCH}'"
 )
 
-_collection = None
-_client: Optional[anthropic.Anthropic] = None
-_lock = threading.Lock()
+_embedder = None
+_claude = None
 
 
-class NotConfigured(RuntimeError):
-    pass
+def embed(texts):
+    """Turn texts into embeddings (384 numbers each) with a local model. Free, no API key."""
+    global _embedder
+    if _embedder is None:
+        _embedder = TextEmbedding(config.EMBEDDING_MODEL)  # downloads ~90 MB on first use
+    return list(_embedder.embed(texts))
 
 
-def get_collection():
-    """Open the persisted vector store, embedding tickets on first use.
-
-    Embeddings run locally (all-MiniLM-L6-v2 via ONNX), so no API key is needed
-    for retrieval; Anthropic does not offer an embeddings endpoint.
-    """
-    global _collection
-    with _lock:
-        if _collection is not None:
-            return _collection
-        client = chromadb.PersistentClient(path=str(VECTOR_DB_DIR))
-        col = client.get_or_create_collection(
-            COLLECTION,
-            embedding_function=DefaultEmbeddingFunction(),
-            metadata={"hnsw:space": "cosine"},
-        )
-        if col.count() == 0:
-            db.init_db()
-            _, rows = db.search_tickets(None, None, MAX_TICKETS, 0)
-            print(f"Embedding {len(rows)} tickets into {VECTOR_DB_DIR.name}/ (one-time)...")
-            for i in range(0, len(rows), 500):
-                batch = rows[i : i + 500]
-                col.add(
-                    ids=[str(r["id"]) for r in batch],
-                    documents=[f"Department: {r['category']} | Log: {r['issue_description']}" for r in batch],
-                    metadatas=[{"ticket_id": r["id"], "category": r["category"]} for r in batch],
-                )
-            print("Vector store ready.")
-        _collection = col
-        return _collection
+def ticket_text(ticket):
+    """The text that represents a ticket, both when embedding it and when showing it to Claude."""
+    return f"Department: {ticket['category']} | Log: {ticket['issue_description']}"
 
 
-def _claude() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            raise NotConfigured("ANTHROPIC_API_KEY is not set. Add it to backend/.env (see backend/.env.example).")
-        # User-level keys (sk-ant-usr-...) must name a workspace on every request
-        workspace = os.getenv("ANTHROPIC_WORKSPACE_ID")
-        headers = {"anthropic-workspace-id": workspace} if workspace else None
-        _client = anthropic.Anthropic(default_headers=headers)
-    return _client
+def answer_question(question):
+    global _claude
 
+    # 1. Retrieve
+    [question_embedding] = embed([question])
+    tickets = database.find_similar(question_embedding, config.TOP_K)
 
-def ask(question: str) -> dict:
-    # Over-fetch because the HNSW index can return the same ticket more than once
-    res = get_collection().query(query_texts=[question], n_results=TOP_K * 2)
-
-    # Validation gate: only well-matched tickets reach the LLM
-    relevant, seen = [], set()
-    for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0], res["distances"][0]):
-        score = 1 - dist  # cosine distance -> similarity
-        if score >= MIN_RELEVANCE and meta["ticket_id"] not in seen:
-            seen.add(meta["ticket_id"])
-            relevant.append((doc, meta, score))
-    relevant = relevant[:TOP_K]
-    if not relevant:
+    # 2. Validate
+    tickets = [t for t in tickets if t["score"] >= config.MIN_RELEVANCE]
+    if not tickets:
         return {"answer": NO_MATCH, "sources": []}
 
-    context = "\n\n".join(f"[#{meta['ticket_id']}] {doc}" for doc, meta, _ in relevant)
-    response = _claude().beta.messages.create(
-        model=MODEL,
+    # 3. Generate
+    context = "\n\n".join(f"[#{t['id']}] {ticket_text(t)}" for t in tickets)
+    if _claude is None:
+        _claude = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
+    response = _claude.beta.messages.create(
+        model=config.CLAUDE_MODEL,
         max_tokens=16000,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": f"<tickets>\n{context}\n</tickets>\n\nQuestion: {question}"}],
-        # If Claude declines, the API retries on Anthropic's recommended fallback model
+        # If Claude declines a question, Anthropic retries it on a fallback model
         betas=["server-side-fallback-2026-07-01"],
         extra_body={"fallbacks": "default", "output_config": {"effort": "medium"}},
     )
@@ -114,16 +69,7 @@ def ask(question: str) -> dict:
     if response.stop_reason == "refusal":
         answer = "Claude declined to answer this question."
     else:
-        answer = "".join(b.text for b in response.content if b.type == "text").strip() or NO_MATCH
+        answer = "".join(block.text for block in response.content if block.type == "text").strip()
 
-    sources: List[dict] = [
-        {"id": meta["ticket_id"], "category": meta["category"], "score": round(score, 3)}
-        for _, meta, score in relevant
-    ]
-    return {"answer": answer, "sources": sources}
-
-
-if __name__ == "__main__":
-    # Build the SQLite DB and vector store ahead of time: python -m app.rag
-    db.init_db()
-    get_collection()
+    sources = [{"id": t["id"], "category": t["category"], "score": round(t["score"], 3)} for t in tickets]
+    return {"answer": answer or NO_MATCH, "sources": sources}

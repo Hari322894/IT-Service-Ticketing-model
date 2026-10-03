@@ -1,6 +1,24 @@
+# Python packages the backend needs.
+# Install them all into the virtual environment with:
+#   pip install -r requirements.txt
+
+# Web server
 fastapi>=0.115
 uvicorn[standard]>=0.30
-pandas>=2.0
+
+# Reads secrets from backend/.env
 python-dotenv>=1.0
+
+# Calls Claude to write answers
 anthropic>=0.60
-chromadb>=1.0
+
+# Talks to Supabase (Postgres) and does vector search with pgvector
+psycopg[binary]>=3.2
+psycopg-pool>=3.2
+pgvector>=0.3
+
+# Local embedding model (all-MiniLM-L6-v2), turns text into 384 numbers
+fastembed>=0.4
+
+# Reads the ticket CSV (only used by the one-time ingest script)
+pandas>=2.0
