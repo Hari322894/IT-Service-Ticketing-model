@@ -1,6 +1,6 @@
 # Enterprise IT Service Model
 
-## Website_url: https://rag-model-harikrishna-maddineni.onrender.com
+## Website_url: https://it-service-ticketing-model.onrender.com
 
 Ask questions about **47,837 real IT support tickets** in plain English. The app finds the most relevant tickets, ignores weak matches, and has Claude write an answer that cites the exact tickets it used.
 
