@@ -82,7 +82,8 @@ def category_counts():
 # ask page given a ticket's embedding, find the k most similar tickets in the database
 
 def find_similar(embedding, k):
-    """The k tickets closest in meaning, with a similarity score from 0 to 1."""
+    # k is the number of similar tickets to retrieve, and embedding is a list of floats (the ticket's vector embedding)
+    # pgvector's <=> operator computes the cosine distance between two vectors, so 1
     # <=> is pgvector's cosine distance (0 = identical), so similarity = 1 - distance
     return run(
         "SELECT id, category, issue_description, 1 - (embedding <=> %s) AS score "

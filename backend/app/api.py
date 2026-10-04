@@ -1,7 +1,3 @@
-"""The web server: API endpoints, plus serving the built React website.
-
-Run from backend/:  uvicorn app.api:app --port 8000
-"""
 import logging
 from typing import List, Optional
 
@@ -17,7 +13,7 @@ log = logging.getLogger("uvicorn.error")
 app = FastAPI(title="IT Ticket Explorer API")
 
 
-# --- Request and response shapes (FastAPI validates these automatically) ---
+# Request and response shapes (FastAPI validates these automatically) ---
 
 class Ticket(BaseModel):
     id: int
@@ -50,7 +46,7 @@ class Answer(BaseModel):
     sources: List[Source]
 
 
-# --- Endpoints ---
+# Endpoints
 
 @app.get("/api/categories", response_model=List[CategoryCount])
 def categories():

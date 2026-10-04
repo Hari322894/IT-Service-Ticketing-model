@@ -1,10 +1,3 @@
-"""One-time data load: CSV -> Supabase, then compute each ticket's embedding.
-
-Run from backend/:  python -m app.ingest
-
-Safe to re-run: it skips the upload if tickets already exist and only embeds
-tickets that don't have an embedding yet, so an interrupted run continues.
-"""
 import time
 import zipfile
 

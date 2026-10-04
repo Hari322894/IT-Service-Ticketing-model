@@ -1,10 +1,4 @@
-"""The RAG pipeline: Retrieve -> Validate -> Generate.
-
-1. Retrieve: turn the question into an embedding and find the most similar tickets.
-2. Validate: drop weak matches. If nothing is left, say so without calling Claude,
-   so it can't make an answer up.
-3. Generate: Claude answers using only the tickets that passed, citing their ids.
-"""
+#The RAG pipeline: Retrieve -> Validate -> Generate.
 import anthropic
 from fastembed import TextEmbedding
 
