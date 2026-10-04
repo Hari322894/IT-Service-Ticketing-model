@@ -10,7 +10,7 @@ from fastembed import TextEmbedding
 
 from . import config, database
 
-NO_MATCH = "No matching technical records found."
+NO_MATCH = "Please ask another question that relates to the tickets."
 
 SYSTEM_PROMPT = (
     "You are an expert corporate IT Systems Infrastructure Analyst.\n"

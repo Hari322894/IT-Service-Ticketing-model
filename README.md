@@ -59,7 +59,7 @@ flowchart LR
    SELECT ..., 1 - (embedding <=> question) AS score
    FROM support_tickets ORDER BY embedding <=> question LIMIT 5
    ```
-3. **Validate**: tickets scoring below 0.3 similarity are dropped. If none are left, the app answers "No matching technical records found" without calling Claude.
+3. **Validate**: tickets scoring below 0.3 similarity are dropped. If none are left, the app asks the user for a question that relates to the tickets, without calling Claude.
 4. **Generate**: Claude gets the remaining tickets with instructions to use only them and cite their IDs. The website shows the answer, and each cited ticket can be opened.
 
 ## Design decisions
