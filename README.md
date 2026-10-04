@@ -1,4 +1,4 @@
-# Enterprise IT Service RAG Model
+# Enterprise IT Service Model
 
 ## Website_url: https://rag-model-harikrishna-maddineni.onrender.com
 
