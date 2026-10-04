@@ -51,30 +51,6 @@ flowchart LR
 └── README.md
 ```
 
-## Setup
-
-**1. Configure.** Create a free [Supabase](https://supabase.com) project, then:
-
-```bash
-cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   
-```
-
-**2. Load the data** (once, about 15 minutes):
-
-```bash
-python -m app.ingest
-```
-
-**3. Build the website and run:**
-
-```bash
-cd ../frontend && npm install && npm run build
-cd ../backend && uvicorn app.api:app --port 8000
-```
-
 ## What happens when you ask a question
 
 1. `AskPage.tsx` sends the question to `POST /api/ask`. `api.py` checks it's 3–500 characters.
